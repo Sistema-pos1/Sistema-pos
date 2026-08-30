@@ -75,7 +75,7 @@ def enviar_correo_smtp(destinatario, emisor, password, asunto, cuerpo):
 @app.route('/configuracion', methods=['GET', 'POST'])
 def manejar_configuracion():
     config_default = {
-        "url_servidor": "https://sistema-pos-20cm.onrender.com",
+        "url_servidor": "https://sistema-pos-pnzy.onrender.com",
         "tasa_bcv": 36.50,
         "correo_destino": "expendiodemedicinas.lc@gmail.com",
         "correo_emisor": "reportesdeventas29@gmail.com",
