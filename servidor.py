@@ -86,11 +86,11 @@ def enviar_correo_smtp(destinatario, emisor, password, asunto, cuerpo):
 @app.route('/configuracion', methods=['GET', 'POST'])
 def manejar_configuracion():
     config_default = {
-        "url_servidor": "https://sistema-pos-pnzy.onrender.com",
+        "url_servidor": "https://sistema-pos-20cm.onrender.com",
         "tasa_bcv": 36.50,
         "correo_destino": "expendiodemedicinas.lc@gmail.com",
         "correo_emisor": "reportesdeventas29@gmail.com",
-        "pass_emisor": "ensbnsjcwixljoob",
+        "pass_emisor": "tlibjzjfwpoddkxg",
         "actualizar_tasa_auto": "Sí"
     }
     if request.method == 'POST':
@@ -633,3 +633,54 @@ def reset_ventas():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+
+@app.post("/correo/venta")
+async def enviar_correo_venta(data: dict):
+    """Envía un comprobante por correo y devuelve un resultado explícito.
+    Configuración mediante variables de entorno:
+      SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+    """
+    import os
+    import smtplib
+    from email.message import EmailMessage
+
+    destino = str(data.get("correo") or data.get("email") or "").strip()
+    asunto = str(data.get("asunto") or "Comprobante de venta")
+    cuerpo = str(data.get("cuerpo") or data.get("mensaje") or "")
+    if not destino:
+        raise HTTPException(status_code=400, detail="Debe indicar un correo de destino.")
+
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    usuario = os.getenv("SMTP_USER", "")
+    password = os.getenv("SMTP_PASSWORD", "")
+    remitente = os.getenv("SMTP_FROM", usuario)
+
+    if not usuario or not password or not remitente:
+        raise HTTPException(
+            status_code=503,
+            detail="Correo no configurado en el servidor. Configure SMTP_USER, SMTP_PASSWORD y SMTP_FROM."
+        )
+
+    msg = EmailMessage()
+    msg["Subject"] = asunto
+    msg["From"] = remitente
+    msg["To"] = destino
+    msg.set_content(cuerpo)
+
+    try:
+        with smtplib.SMTP(host, port, timeout=20) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(usuario, password)
+            smtp.send_message(msg)
+        return {"ok": True, "mensaje": "Correo enviado correctamente.", "destino": destino}
+    except smtplib.SMTPAuthenticationError:
+        raise HTTPException(
+            status_code=502,
+            detail="No se pudo autenticar con el servidor de correo. En Gmail use una clave de aplicación."
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"No se pudo enviar el correo: {e}")
