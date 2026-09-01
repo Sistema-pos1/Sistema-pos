@@ -90,7 +90,7 @@ def manejar_configuracion():
         "tasa_bcv": 36.50,
         "correo_destino": "expendiodemedicinas.lc@gmail.com",
         "correo_emisor": "reportesdeventas29@gmail.com",
-        "pass_emisor": "tlibjzjfwpoddkxg",
+        "pass_emisor": "ensbnsjcwixljoob",
         "actualizar_tasa_auto": "Sí"
     }
     if request.method == 'POST':
