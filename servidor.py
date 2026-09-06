@@ -281,6 +281,22 @@ def cerrar_sesion():
             "message": "Todas las cajas cerradas. Correos individuales en reposo y consolidado total enviados con éxito."
         }), 200
 
+
+
+def respaldo_automatico_productos(productos, motivo="cambio"):
+    """Guarda una copia del catálogo antes de una mutación. Nunca bloquea la operación si falla."""
+    try:
+        from datetime import datetime
+        respaldo = {
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "motivo": motivo,
+            "cantidad_productos": len(productos),
+            "productos": productos,
+        }
+        guardar_json("server_productos_ultimo_respaldo", respaldo)
+    except Exception as e:
+        print(f"Aviso: no se pudo crear respaldo automático de productos: {e}")
+
 # --- RUTAS DE PRODUCTOS ---
 def _normalizar_codigo(valor):
     return str(valor or "").strip().casefold()
@@ -356,6 +372,7 @@ def manejar_productos():
                 return jsonify({"error": "Ya existe otro producto con ese código", "producto_existente": p}), 409
 
         if indice_id is not None:
+            respaldo_automatico_productos(productos, "antes de actualizar producto")
             producto_actual = dict(productos[indice_id])
             producto_actual.update(datos)
             producto_actual["id"] = productos[indice_id].get("id")
@@ -378,6 +395,7 @@ def manejar_productos():
                 marcar_catalogo_cambiado()
                 return jsonify({"status": "success", "message": "Producto actualizado", "producto": producto_actual, "productos": productos, "catalogo_version": catalogo_version}), 200
 
+        respaldo_automatico_productos(productos, "antes de crear producto")
         nuevo_prod = dict(datos)
         nuevo_prod["id"] = prod_id or _nuevo_id_producto()
         nuevo_prod.pop("pendiente_sync", None)
@@ -401,6 +419,7 @@ def eliminar_producto_servidor(prod_id):
                 productos_filtrados.append(p)
         if not encontrado:
             return jsonify({"error": "Producto no encontrado por ID"}), 404
+        respaldo_automatico_productos(productos, "antes de eliminar producto")
         if not guardar_json("server_productos", productos_filtrados):
             return jsonify({"error": "No se pudo eliminar el producto"}), 500
         marcar_catalogo_cambiado()
@@ -430,6 +449,7 @@ def manejar_ventas():
         lista_items = nueva_venta.get("items", nueva_venta.get("productos", []))
         productos_server = leer_json("server_productos", [])
         errores_stock = []
+        respaldo_automatico_productos(productos_server, "antes de registrar venta")
 
         for item_vendido in lista_items:
             cod_vendido = str(item_vendido.get("codigo", "")).strip().lower()
@@ -550,6 +570,7 @@ def manejar_ventas_credito():
         lista_items = datos.get("items", datos.get("productos", []))
         productos_server = leer_json("server_productos", [])
         errores_stock = []
+        respaldo_automatico_productos(productos_server, "antes de registrar crédito")
 
         for item in lista_items:
             cod = str(item.get("codigo", "")).strip().lower()
@@ -608,6 +629,7 @@ def revertir_venta_credito(credito_id):
 
         items = credito.get("items", credito.get("productos", []))
         productos = leer_json("server_productos", [])
+        respaldo_automatico_productos(productos, "antes de revertir crédito")
         for item in items:
             cod = str(item.get("codigo", "")).strip().lower()
             pid = str(item.get("id", "")).strip()
